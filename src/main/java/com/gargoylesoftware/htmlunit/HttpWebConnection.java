@@ -299,7 +299,7 @@ public class HttpWebConnection implements WebConnection {
             // POST as well as PUT and PATCH
             final HttpEntityEnclosingRequest method = (HttpEntityEnclosingRequest) httpMethod;
 
-            if (webRequest.getEncodingType() == FormEncodingType.URL_ENCODED && method instanceof HttpPost) {
+            if (webRequest.getEncodingType() == FormEncodingType.URL_ENCODED) {
                 final HttpPost postMethod = (HttpPost) method;
                 if (webRequest.getRequestBody() == null) {
                     final List<NameValuePair> pairs = webRequest.getRequestParameters();

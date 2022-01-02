@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -63,6 +64,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.utils.URLEncodedUtils;
 
 import com.gargoylesoftware.htmlunit.AjaxController;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
@@ -893,9 +895,35 @@ public class XMLHttpRequest extends XMLHttpRequestEventTarget {
             else if (content instanceof Blob) {
                 ((Blob) content).fillRequest(webRequest_);
             }
+            // this should be the last else if before the default case
+            // because it will basically match nearly all requests
+            // as FormEncodingType.URL_ENCODED is the defautl encoding type
+            else if (webRequest_.getEncodingType() == FormEncodingType.URL_ENCODED) {
+              
+              // If the encoding on the request is URL_ENCODED we don't set the body
+              // but instead parse the content and add the single request params 
+              // to the requestParameters list
+              // this is necessary for cases when htmlunit is used with Springs MockMvc under the hood
+              // as there won't be any parsing of the content
+              // in case of the real http client (as in com.gargoylesoftware.htmlunit.HttpWebConnection) 
+              // the parameters will be encoded again and put into the body
+              // this should fix https://github.com/HtmlUnit/htmlunit/issues/223 
+              final String body = Context.toString(content);
+              
+              if(LOG.isDebugEnabled()) {
+                LOG.debug("Setting request params from content "+ body);
+              }
+
+              webRequest_.setRequestParameters(
+                           URLEncodedUtils
+                           .parse(body, UTF_8).stream()
+                           .map(nvp -> new NameValuePair(nvp.getName(), nvp.getValue()))
+                           .collect(Collectors.toList()));
+            }
             else {
                 final String body = Context.toString(content);
                 if (!body.isEmpty()) {
+                  
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Setting request body to: " + body);
                     }
